@@ -7,17 +7,18 @@ using System.Linq;
 public class ExamResult<T>
 {
     public string StudentName { get; set; }
+    public int Score { get; set; }
     public T Result { get; set; }
 
-    public ExamResult(string studentName, T result)
+    public ExamResult(string studentName, int score, T result)
     {
         StudentName = studentName;
+        Score = score;
         Result = result;
     }
 }
 
-public class ExamResultManager<T>
-    where T : IComparable<T>
+public class ExamResultManager<T> where T : IComparable<T>
 {
     private List<ExamResult<T>> examResults;
 
@@ -26,9 +27,9 @@ public class ExamResultManager<T>
         examResults = new List<ExamResult<T>>();
     }
 
-    public void AddResult(string studentName, T result)
+    public void AddResult(string studentName, int score, T result)
     {
-        ExamResult<T> examResult = new ExamResult<T>(studentName, result);
+        ExamResult<T> examResult = new ExamResult<T>(studentName, score, result);
         examResults.Add(examResult);
     }
 
@@ -38,7 +39,7 @@ public class ExamResultManager<T>
         Console.WriteLine("------------------");
         foreach (var result in examResults)
         {
-            Console.WriteLine("Student: " + result.StudentName + ", Result: " + result.Result);
+            Console.WriteLine("Student: " + result.StudentName + ", Score: " + result.Score + ", Result: " + result.Result);
         }
         Console.WriteLine("------------------");
     }
@@ -53,23 +54,10 @@ public class ExamResultManager<T>
         return examResults.Where(r => r.Result.Equals("Failed")).ToList();
     }
 
-    public List<ExamResult<T>> GetTopScorers(int count)
+    public List<ExamResult<T>> GetTopScorer()
     {
-        List<ExamResult<T>> topScorers = new List<ExamResult<T>>();
-
-        foreach (var result in examResults)
-        {
-            if (result.Result is int || result.Result is double || result.Result is string)
-            {
-                topScorers.Add(result);
-            }
-            else
-            {
-                Console.WriteLine("Invalid score format for student: " + result.StudentName);
-            }
-        }
-
-        return topScorers.OrderByDescending(r => r.Result).Take(count).ToList();
+        int maxScore = examResults.Max(r => r.Score);
+        return examResults.Where(r => r.Score == maxScore).ToList();
     }
 }
 
@@ -91,50 +79,42 @@ public class Program
                 {
                     int rowCount = worksheet.Dimension.Rows;
 
-                    ExamResultManager<string> examResultManagerString = new ExamResultManager<string>();
+                    ExamResultManager<string> examResultManager = new ExamResultManager<string>();
 
                     for (int row = 2; row <= rowCount; row++)
                     {
                         string studentName = worksheet.Cells[row, 1].Value?.ToString();
-                        string scoreStr = worksheet.Cells[row, 2].Value?.ToString();
+                        int score = int.Parse(worksheet.Cells[row, 2].Value?.ToString());
                         string result = worksheet.Cells[row, 3].Value?.ToString();
 
-                        if (int.TryParse(scoreStr, out int score))
-                        {
-                            examResultManagerString.AddResult(studentName, result);
-                        }
-                        else
-                        {
-                            Console.WriteLine("Invalid score at row " + row);
-                        }
+                        examResultManager.AddResult(studentName, score, result);
                     }
 
-                    examResultManagerString.PrintResults();
+                    examResultManager.PrintResults();
 
                     Console.WriteLine("Passed Results:");
-                    List<ExamResult<string>> passedResults = examResultManagerString.GetPassedResults();
+                    List<ExamResult<string>> passedResults = examResultManager.GetPassedResults();
                     foreach (var result in passedResults)
                     {
                         Console.WriteLine("Student: " + result.StudentName + ", Result: " + result.Result);
                     }
+                    Console.WriteLine("------------------");
 
                     Console.WriteLine("Failed Results:");
-                    List<ExamResult<string>> failedResults = examResultManagerString.GetFailedResults();
+                    List<ExamResult<string>> failedResults = examResultManager.GetFailedResults();
                     foreach (var result in failedResults)
                     {
                         Console.WriteLine("Student: " + result.StudentName + ", Result: " + result.Result);
                     }
+                    Console.WriteLine("------------------");
 
-                    Console.WriteLine("Top Scorers:");
-                    List<ExamResult<string>> topScorers = examResultManagerString.GetTopScorers(3);
+                    Console.WriteLine("Top Scorer(s):");
+                    List<ExamResult<string>> topScorers = examResultManager.GetTopScorer();
                     foreach (var result in topScorers)
                     {
-                        Console.WriteLine("Student: " + result.StudentName + ", Result: " + result.Result);
+                        Console.WriteLine("Student: " + result.StudentName + ", Score: " + result.Score);
                     }
                 }
-                //else if(){
-
-                //}
                 else
                 {
                     Console.WriteLine("Worksheet '" + sheetName + "' not found in the Excel file.");
@@ -143,7 +123,7 @@ public class Program
         }
         else
         {
-            Console.WriteLine("Excel file not found at the specified location: " + filePath);
+            Console.WriteLine("Excel file not found at the specified path.");
         }
 
         Console.ReadLine();
